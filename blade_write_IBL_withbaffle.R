@@ -264,6 +264,26 @@ for(i in 1:(n-1)){
 
 }
 
+
+#Baffle Loop
+for(i in 1:(n-1)){
+  secText = paste("Begin section ! ",i+26,sep="")
+  write(secText,file=outfile,append=TRUE)
+  
+  bladeAngle = bladeMap$tw[i]+pitchAngle
+  bafLen = bladeMap$c[i]/4
+  
+  tailP = bladeDef[[i]][1,]
+  bafP = tailP
+  bafP[1] = bafP[1] + cos(bladeAngle)*bafLen
+  bafP[2] = bafP[2] - sin(bladeAngle)*bafLen
+  
+  write("Begin curve ! 0",file=outfile,append=TRUE)
+  write.table(tailP,outfile,row.names=FALSE,col.names=FALSE,append=TRUE)
+  write.table(bafP,outfile,row.names=FALSE,col.names=FALSE,append=TRUE)
+  
+}
+
 plot(originalSlice$x,originalSlice$y,ylim=c(-0.4,0.4),asp=1)
 #par(new=TRUE)
 #plot(outSlice$x,outSlice$y,col="red",ylim=c(-0.4,0.4),asp=1,axes=FALSE)

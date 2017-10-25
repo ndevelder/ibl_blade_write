@@ -28,7 +28,7 @@ tranSlice <- function(circ,airfoil,chord,angle,radius,map,index){
   
   lastCyl = map$d[4]
   firstAir = map$d[8]
-  airAng = (map$tw[8] + 3.0)
+  airAng = (map$tw[8]+pitchAngle)
   
   fraAir = (radius - lastCyl)/(firstAir - lastCyl)
   fraCyl = (firstAir - radius)/(firstAir - lastCyl)
@@ -46,30 +46,39 @@ tranSliceCirc <- function(circ,airfoil,chord,angle,radius,map,index){
   angleRad = -1*angle*pi/180.0
   
   newSlice <- data.frame(x=airfoil$x,y=airfoil$y,z=airfoil$z)
+  zeroAir <- rotateSlice(airfoil,-map$tw[8] - pitchAngle)
   
   lastCyl = map$d[4]
   firstAir = map$d[8]
-  airAng = (map$tw[8] + 3.0)
   
   fraAir = (radius - lastCyl)/(firstAir - lastCyl)
   fraCyl = (firstAir - radius)/(firstAir - lastCyl)
   
-  newSlice$x = airfoil$x*fraAir + circ$x*fraCyl 
-  newSlice$y = airfoil$y*fraAir + circ$y*fraCyl
+  newSlice$x = zeroAir$x*fraAir + circ$x*fraCyl 
+  newSlice$y = zeroAir$y*fraAir + circ$y*fraCyl
   newSlice$z = rep(radius,times=length(newSlice$x))
+  
+  newSlice <- rotateSlice(newSlice,angle)
   
   return(newSlice)
 }
 
+writeSec <- function(outfile,s){
+  secText = paste("Begin section ! ",s,sep="")
+  write(secText,file=outfile,append=TRUE)
+  s = s+1
+  return(s)
+}
+
 
 setwd("C:/Users/ndeve/Dropbox/Research/Data/Aifoil_Coordinates/ibl_blade_write")
-originalSlice <- read.csv(file="s809_C1_xyz_30percentZero.csv",sep = ",",head = TRUE)
+originalSlice <- read.csv(file="s809_C1_xyz_30percentZero_addedTail.csv",sep = ",",head = TRUE)
 originalCirc <- read.csv(file="circle1_nrelphase6_2.csv",sep = ",",head = TRUE)
 originalCircBlend <- read.csv(file="circle1_nrelphase6.csv",sep = ",",head = TRUE)
 bladeMap <- read.csv(file="blade_map_withtip.csv",sep = ",",head = TRUE)
 
 coordN = length(originalSlice$x)
-pitchAngle = 3.0
+pitchAngle = 0.0
 circDeg = seq(0,360,length=coordN)
 circRad = circDeg*(pi/180)
 
@@ -87,10 +96,10 @@ for(i in 1:n){
     bladeDefBlend[[i]] <- data.frame(x=tempSlice$x*bladeMap$c[i],y=tempSlice$y*bladeMap$c[i],z=rep(bladeMap$d[i],times=length(tempSlice$x)))
   }
   if(bladeMap$sh[i] == "Cylinder"){
-    tempCirc = rotateSlice(originalCirc,bladeMap$tw[i])
+    tempCirc = rotateSlice(originalCirc,bladeMap$tw[i]-8)
     bladeDef[[i]] <- data.frame(x=tempCirc$x*bladeMap$c[i]*0.5,y=tempCirc$y*bladeMap$c[i]*0.5,z=rep(bladeMap$d[i],times=length(tempCirc$x)))
-    tempCirc = rotateSlice(originalCircBlend,bladeMap$tw[i])
-    bladeDefBlend[[i]] <- data.frame(x=tempCirc$x*bladeMap$c[i]*0.5,y=tempCirc$y*bladeMap$c[i]*0.5,z=rep(bladeMap$d[i],times=length(tempCirc$x)))
+    tempCirc = rotateSlice(originalCircBlend,bladeMap$tw[i]+23)
+    bladeDefBlend[[i]] <- data.frame(x=tempCirc$x*bladeMap$th[i]/2,y=tempCirc$y*bladeMap$th[i]/2,z=rep(bladeMap$d[i],times=length(tempCirc$x)))
   }
 }
 
@@ -98,6 +107,7 @@ for(i in 1:n){
 for(i in 1:n){
   if(bladeMap$sh[i] == "Transition"){
     bladeDef[[i]] <- tranSlice(bladeDefBlend[[4]],bladeDefBlend[[8]],bladeMap$c[i],bladeMap$tw[i]+pitchAngle,bladeMap$d[i],bladeMap,i)
+    plot(bladeDef[[i]]$x,bladeDef[[i]]$y,asp=1)
   }
 }
 
@@ -116,9 +126,9 @@ cdef = 34
 lup = 10
 ldown = 11
 
+s=1
+
 for(i in 1:(n-1)){
- secText = paste("Begin section ! ",i,sep="")
- write(secText,file=outfile,append=TRUE)
 
  if(i < 4){
 
@@ -126,24 +136,30 @@ for(i in 1:(n-1)){
    s2 = 41
    s3 = 61
    
-   write("Begin curve ! 0",file=outfile,append=TRUE)
+   s = writeSec(outfile,s)
+   write("Begin curve",file=outfile,append=TRUE)
    write.table(bladeDef[[i]][1:s1,],outfile,row.names=FALSE,col.names=FALSE,append=TRUE)
    
-   write("Begin curve ! 1",file=outfile,append=TRUE)
+   s = writeSec(outfile,s)
+   write("Begin curve",file=outfile,append=TRUE)
    write.table(bladeDef[[i]][s1:s2,],outfile,row.names=FALSE,col.names=FALSE,append=TRUE)
    
-   write("Begin curve ! 2",file=outfile,append=TRUE)
+   s = writeSec(outfile,s)
+   write("Begin curve",file=outfile,append=TRUE)
    write.table(bladeDef[[i]][s2:s3,],outfile,row.names=FALSE,col.names=FALSE,append=TRUE)
    
-   write("Begin curve ! 3",file=outfile,append=TRUE)
+   s = writeSec(outfile,s)
+   write("Begin curve",file=outfile,append=TRUE)
    write.table(bladeDef[[i]][s3,],outfile,row.names=FALSE,col.names=FALSE,append=TRUE)
    write.table(bladeDef[[i+1]][s3,],outfile,row.names=FALSE,col.names=FALSE,append=TRUE)
    
-   write("Begin curve ! 4",file=outfile,append=TRUE)
+   s = writeSec(outfile,s)
+   write("Begin curve",file=outfile,append=TRUE)
    write.table(bladeDef[[i]][s2,],outfile,row.names=FALSE,col.names=FALSE,append=TRUE)
    write.table(bladeDef[[i+1]][s2,],outfile,row.names=FALSE,col.names=FALSE,append=TRUE)
    
-   write("Begin curve ! 5",file=outfile,append=TRUE)
+   s = writeSec(outfile,s)
+   write("Begin curve",file=outfile,append=TRUE)
    write.table(bladeDef[[i]][s1,],outfile,row.names=FALSE,col.names=FALSE,append=TRUE)
    write.table(bladeDef[[i+1]][s1,],outfile,row.names=FALSE,col.names=FALSE,append=TRUE)
  }
@@ -154,66 +170,87 @@ for(i in 1:(n-1)){
    s2 = 41
    s3 = 61
    
-   write("Begin curve ! 0",file=outfile,append=TRUE)
+   s = writeSec(outfile,s)
+   write("Begin curve",file=outfile,append=TRUE)
    write.table(bladeDef[[i]][1:s1,],outfile,row.names=FALSE,col.names=FALSE,append=TRUE)
    
-   write("Begin curve ! 1",file=outfile,append=TRUE)
+   s = writeSec(outfile,s)
+   write("Begin curve",file=outfile,append=TRUE)
    write.table(bladeDef[[i]][s1:s2,],outfile,row.names=FALSE,col.names=FALSE,append=TRUE)
    
-   write("Begin curve ! 2",file=outfile,append=TRUE)
+   s = writeSec(outfile,s)
+   write("Begin curve",file=outfile,append=TRUE)
    write.table(bladeDef[[i]][s2:s3,],outfile,row.names=FALSE,col.names=FALSE,append=TRUE)
    
-   write("Begin curve ! 3",file=outfile,append=TRUE)
+   s = writeSec(outfile,s)
+   write("Begin curve",file=outfile,append=TRUE)
    write.table(bladeDef[[i]][s3,],outfile,row.names=FALSE,col.names=FALSE,append=TRUE)
    write.table(bladeDef[[i+1]][cdef+ldown,],outfile,row.names=FALSE,col.names=FALSE,append=TRUE)
    
-   write("Begin curve ! 4",file=outfile,append=TRUE)
+   s = writeSec(outfile,s)
+   write("Begin curve",file=outfile,append=TRUE)
    write.table(bladeDef[[i]][s2,],outfile,row.names=FALSE,col.names=FALSE,append=TRUE)
    write.table(bladeDef[[i+1]][cdef-lup,],outfile,row.names=FALSE,col.names=FALSE,append=TRUE)
    
-   write("Begin curve ! 5",file=outfile,append=TRUE)
+   s = writeSec(outfile,s)
+   write("Begin curve",file=outfile,append=TRUE)
    write.table(bladeDef[[i]][s1,],outfile,row.names=FALSE,col.names=FALSE,append=TRUE)
    write.table(bladeDef[[i+1]][1,],outfile,row.names=FALSE,col.names=FALSE,append=TRUE)
  }
  
  
  if(i>4 && i<n-1){
-   write("Begin curve ! 0",file=outfile,append=TRUE)
+   s = writeSec(outfile,s)
+   write("Begin curve",file=outfile,append=TRUE)
    write.table(bladeDef[[i]][1:(cdef-lup),],outfile,row.names=FALSE,col.names=FALSE,append=TRUE)
    
-   write("Begin curve ! 1",file=outfile,append=TRUE)
+   s = writeSec(outfile,s)
+   write("Begin curve",file=outfile,append=TRUE)
    write.table(bladeDef[[i]][(cdef-lup):(cdef+ldown),],outfile,row.names=FALSE,col.names=FALSE,append=TRUE)
    
-   write("Begin curve ! 2",file=outfile,append=TRUE)
+   s = writeSec(outfile,s)
+   write("Begin curve",file=outfile,append=TRUE)
    write.table(bladeDef[[i]][(cdef+ldown):np,],outfile,row.names=FALSE,col.names=FALSE,append=TRUE)
-
-   write("Begin curve ! 3",file=outfile,append=TRUE)
+   
+   s = writeSec(outfile,s)
+   write("Begin curve",file=outfile,append=TRUE)
    write.table(bladeDef[[i]][cdef+ldown,],outfile,row.names=FALSE,col.names=FALSE,append=TRUE)
    write.table(bladeDef[[i+1]][cdef+ldown,],outfile,row.names=FALSE,col.names=FALSE,append=TRUE)
    
-   write("Begin curve ! 4",file=outfile,append=TRUE)
+   s = writeSec(outfile,s)
+   write("Begin curve",file=outfile,append=TRUE)
    write.table(bladeDef[[i]][cdef-lup,],outfile,row.names=FALSE,col.names=FALSE,append=TRUE)
    write.table(bladeDef[[i+1]][cdef-lup,],outfile,row.names=FALSE,col.names=FALSE,append=TRUE)
    
-   write("Begin curve ! 5",file=outfile,append=TRUE)
+   s = writeSec(outfile,s)
+   write("Begin curve",file=outfile,append=TRUE)
    write.table(bladeDef[[i]][1,],outfile,row.names=FALSE,col.names=FALSE,append=TRUE)
    write.table(bladeDef[[i+1]][1,],outfile,row.names=FALSE,col.names=FALSE,append=TRUE)
  }
  
  if(i==(n-1)){
-   write("Begin curve ! 0",file=outfile,append=TRUE)
+   s = writeSec(outfile,s)
+   write("Begin curve",file=outfile,append=TRUE)
    write.table(bladeDef[[i]][1:(cdef-lup),],outfile,row.names=FALSE,col.names=FALSE,append=TRUE)
    
-   write("Begin curve ! 1",file=outfile,append=TRUE)
-   write.table(bladeDef[[i]][(cdef-lup):(cdef),],outfile,row.names=FALSE,col.names=FALSE,append=TRUE)
-
-   write("Begin curve ! 2",file=outfile,append=TRUE)
-   write.table(bladeDef[[i]][(cdef):(cdef+ldown),],outfile,row.names=FALSE,col.names=FALSE,append=TRUE)
+#    s = writeSec(outfile,s)
+#    write("Begin curve",file=outfile,append=TRUE)
+#    write.table(bladeDef[[i]][(cdef-lup):(cdef),],outfile,row.names=FALSE,col.names=FALSE,append=TRUE)
+#    
+#    s = writeSec(outfile,s)
+#    write("Begin curve",file=outfile,append=TRUE)
+#    write.table(bladeDef[[i]][(cdef):(cdef+ldown),],outfile,row.names=FALSE,col.names=FALSE,append=TRUE)
    
-   write("Begin curve ! 3",file=outfile,append=TRUE)
+   s = writeSec(outfile,s)
+   write("Begin curve",file=outfile,append=TRUE)
+   write.table(bladeDef[[i]][(cdef-lup):(cdef+ldown),],outfile,row.names=FALSE,col.names=FALSE,append=TRUE)
+   
+   s = writeSec(outfile,s)
+   write("Begin curve",file=outfile,append=TRUE)
    write.table(bladeDef[[i]][(cdef+ldown):np,],outfile,row.names=FALSE,col.names=FALSE,append=TRUE)
    
-   write("Begin curve ! 4",file=outfile,append=TRUE)
+   s = writeSec(outfile,s)
+   write("Begin curve",file=outfile,append=TRUE)
    write.table(bladeDef[[i]][1,],outfile,row.names=FALSE,col.names=FALSE,append=TRUE)
    write.table(bladeDef[[i+1]][1,],outfile,row.names=FALSE,col.names=FALSE,append=TRUE)
 
@@ -233,7 +270,8 @@ for(i in 1:(n-1)){
     capMid <- data.frame(x=lePoint$x*sin(45*pi/180), y=lePoint$y+0.005,z=bladeDef[[n-1]]$z[1]+dleZ*sin(45*pi/180)+0.0073) 
     lPoff <- data.frame(x=lePoint$x+0.0005, y=lePoint$y,z=lePoint$z+0.005)
     
-    write("Begin curve ! 5",file=outfile,append=TRUE)
+    s = writeSec(outfile,s)
+    write("Begin curve",file=outfile,append=TRUE)
     write.table(bladeDef[[n]][1,],outfile,row.names=FALSE,col.names=FALSE,append=TRUE)
     write.table(tipP,outfile,row.names=FALSE,col.names=FALSE,append=TRUE)
     
@@ -263,6 +301,105 @@ for(i in 1:(n-1)){
  
 
 }
+
+baffleTailP <- list()
+baffleBafP <- list()
+baffleDef <- list()
+
+#Baffle Definition Loop
+for(i in 1:(n-1)){
+  
+  if(bladeMap$sh[i]=="Cylinder"){
+    bladeAngle = (bladeMap$tw[i])*pi/180.0
+  }
+  
+  if(bladeMap$sh[i]=="Transition"){
+    bladeAngle = (bladeMap$tw[i]+pitchAngle)*pi/180.0
+  }
+  
+  if(bladeMap$sh[i]=="s809"){
+    bladeAngle = (bladeMap$tw[i]+pitchAngle-3.0)*pi/180.0
+  }
+  
+  bafLen = bladeMap$c[i]/16
+  
+  if(i<5){
+    tailP = bladeDef[[i]][21,]
+    bafP = tailP
+    bafP[1] = bafP[1] + cos(bladeAngle)*bafLen
+    bafP[2] = bafP[2] + sin(bladeAngle)*bafLen
+  }
+  
+  if(i>4){
+    tailP = bladeDef[[i]][1,]
+    bafP = tailP
+    bafP[1] = bafP[1] + cos(bladeAngle)*bafLen
+    bafP[2] = bafP[2] + sin(bladeAngle)*bafLen
+  }
+  
+  baffleDef[[i]] <- data.frame(angle=bladeAngle,length=bafLen)
+  baffleTailP[[i]] <- tailP
+  baffleBafP[[i]] <- bafP
+    
+}
+
+# Baffle write loop
+for(i in 1:(n-1)){
+
+  s = writeSec(outfile,s)
+  write("Begin curve",file=outfile,append=TRUE)
+  write.table(baffleTailP[[i]],outfile,row.names=FALSE,col.names=FALSE,append=TRUE)
+  write.table(baffleBafP[[i]],outfile,row.names=FALSE,col.names=FALSE,append=TRUE)
+  
+  if(i<(n-1)){
+  s = writeSec(outfile,s)
+  write("Begin curve",file=outfile,append=TRUE)
+  write.table(baffleBafP[[i]],outfile,row.names=FALSE,col.names=FALSE,append=TRUE)
+  write.table(baffleBafP[[i+1]],outfile,row.names=FALSE,col.names=FALSE,append=TRUE)
+  }
+  
+}
+
+# Baffle tip
+bladeAngle = (bladeMap$tw[n]+pitchAngle)*pi/180.0
+bafLen = bladeMap$c[n]/16
+tailP = bladeDef[[n]][1,]
+bafP = tailP
+bafP[1] = bafP[1] + cos(bladeAngle)*bafLen
+bafP[2] = bafP[2] + sin(bladeAngle)*bafLen
+bafP[3] = bafP[3] + bafLen
+
+bafPadd = tipP
+bafPadd[1] = bafPadd[1]+bafLen*8
+bafPadd[3] = bafPadd[3]+bafLen
+
+bafPadd2 = tipP
+bafPadd2[1] = bafPadd2[1]+bafLen*4
+bafPadd2[3] = bafPadd2[3]+bafLen
+
+bafPadd3 = tipP
+bafPadd3[1] = bafPadd3[1]+bafLen*0.5
+bafPadd3[3] = bafPadd3[3]+bafLen*0.67
+
+s = writeSec(outfile,s)
+write("Begin curve",file=outfile,append=TRUE)
+write.table(tailP,outfile,row.names=FALSE,col.names=FALSE,append=TRUE)
+write.table(bafP,outfile,row.names=FALSE,col.names=FALSE,append=TRUE)
+
+s = writeSec(outfile,s)
+write("Begin curve",file=outfile,append=TRUE)
+write.table(bafP,outfile,row.names=FALSE,col.names=FALSE,append=TRUE)
+write.table(bafPadd3,outfile,row.names=FALSE,col.names=FALSE,append=TRUE)
+
+s = writeSec(outfile,s)
+write("Begin curve",file=outfile,append=TRUE)
+write.table(bafPadd3,outfile,row.names=FALSE,col.names=FALSE,append=TRUE)
+write.table(tipP,outfile,row.names=FALSE,col.names=FALSE,append=TRUE)
+
+s = writeSec(outfile,s)
+write("Begin curve",file=outfile,append=TRUE)
+write.table(baffleBafP[[n-1]],outfile,row.names=FALSE,col.names=FALSE,append=TRUE)
+write.table(bafP,outfile,row.names=FALSE,col.names=FALSE,append=TRUE)
 
 plot(originalSlice$x,originalSlice$y,ylim=c(-0.4,0.4),asp=1)
 #par(new=TRUE)
